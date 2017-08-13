@@ -1,0 +1,80 @@
+buildscript {
+	ext {
+		springBootVersion = '1.5.6.RELEASE'
+	}
+	repositories {
+		mavenCentral()
+	}
+	dependencies {
+		classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+	}
+}
+
+apply plugin: 'java'
+apply plugin: 'eclipse'
+apply plugin: 'org.springframework.boot'
+
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = 1.8
+
+repositories {
+	mavenCentral()
+}
+
+
+dependencies {
+	compile('org.springframework.boot:spring-boot-starter')
+	testCompile('org.springframework.boot:spring-boot-starter-test')
+}
+
+def propFile = "app.dev.properties"
+Map<String, String> expandProps = [:]
+
+processResources {
+	outputs.upToDateWhen { false }
+	doFirst {
+		println "---$propFile"
+		def props = new Properties()
+		file(propFile).withInputStream { props.load(it) }
+		props.each { prop ->
+			expandProps.put((String) prop.key, (String) prop.value)
+		}
+	}
+	filesMatching('application.properties') {
+		expand(expandProps)
+	}
+}
+
+task setProdProfile {
+	doFirst {
+		propFile = "app.prod.properties"
+	}
+}
+
+task buildProd {
+	dependsOn build
+	dependsOn setProdProfile
+	processResources.mustRunAfter setProdProfile
+}
+
+configure(buildProd) {
+	group = BasePlugin.BUILD_GROUP
+	description = 'Build prod'
+}
+
+task setDevProfile {
+	doFirst {
+		propFile = "app.dev.properties"
+	}
+}
+
+task buildDev {
+	dependsOn build
+	dependsOn setDevProfile
+	processResources.mustRunAfter setDevProfile
+}
+
+configure(buildDev) {
+	group = BasePlugin.BUILD_GROUP
+	description = 'Build dev'
+}
